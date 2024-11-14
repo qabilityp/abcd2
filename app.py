@@ -1,7 +1,16 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
-
+from functools import wraps
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def dict_factory(cursor, row):
     d = {}
@@ -9,7 +18,7 @@ def dict_factory(cursor, row):
         d[col[0]] = row[idx]
     return d
 
-class db_local(object):
+class Dblocal(object):
     def __init__(self, file_name):
         self.con = sqlite3.connect(file_name)
         self.con.row_factory = dict_factory
@@ -20,35 +29,54 @@ class db_local(object):
         self.con.commit()
         self.con.close()
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'GET':
-        return 'GET'
-    if request.method == 'POST':
-        return 'POST'
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
         return render_template('register.html')
     if request.method == 'POST':
-        with db_local('database_3.db') as db_cur:
+        with Dblocal('database_3.db') as db_cur:
             form_data = request.form
             db_cur.execute('''INSERT INTO user (login, password, ipn, full_name, contracts, photo, passport)
                            VALUES (?, ?, ?, ?, ?, ?, ?)''',
                            (form_data['login'], form_data['password'], form_data['ipn'], form_data['full_name'], form_data['contracts'], form_data['photo'], form_data['passport']))
         return redirect('/login')
 
-@app.route('/logout', methods=['GET', 'POST', 'DELETE'])
-def logout():
+@app.route('/login', methods=['GET', 'POST'])
+def login():
     if request.method == 'GET':
-        return 'GET'
-    if request.method == 'POST':
-        return 'POST'
-    if request.method == 'DELETE':
-        return 'DELETE'
+        return render_template('login.html')
+    elif request.method == 'POST':
+        username = request.form['login']
+        password = request.form['password']
+
+        with Dblocal('database_3.db') as db_project:
+            user = db_project.execute('''SELECT * FROM user where login = ? AND password = ?''',
+                               (username, password)).fetchone()
+        if user:
+            session['user_id'] = user['id']
+            session['username'] = user['login']
+            return redirect('/dashboard')
+        else:
+            return "Невірні дані, спробуйте ще раз"
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    if 'user_id' in session:
+        return f"Вітаю, {session['username']}! Ви увійшли в систему."
+    else:
+        return redirect('/login')
+
+@app.route('/logout', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def logout():
+    session.pop('user_id', None)
+    session.pop('username', None)
+    return redirect('/login')
 
 @app.route('/profile', methods=['GET', 'POST'])
+@login_required
 def profile():
     if request.method == 'GET':
         return render_template('user.html')
@@ -56,6 +84,7 @@ def profile():
         return 'POST'
 
 @app.route('/profile/user', methods=['GET', 'PUT', 'DELETE'])
+@login_required
 def profile_user():
     if request.method == 'GET':
         return 'GET'
@@ -85,14 +114,15 @@ def favorites():
         return 'PATCH'
 
 @app.route('/items', methods=['GET', 'POST'])
+@login_required
 def items():
     if request.method == 'GET':
-        with db_local('database_3.db') as db_cur:
+        with Dblocal('database_3.db') as db_cur:
             db_cur.execute('SELECT * FROM item')
             items = db_cur.fetchall()
         return render_template('item.html', items=items)
     elif request.method == 'POST':
-        with db_local('database_3.db') as db_cur:
+        with Dblocal('database_3.db') as db_cur:
             form_data = request.form
             db_cur.execute('''INSERT INTO item (photo, name, description, price_hour, price_day, price_week, price_month)
                               VALUES (:photo, :name, :description, :price_hour, :price_day, :price_week, :price_month)''',
