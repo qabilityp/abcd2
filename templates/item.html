@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+{% for one_item in items %}
+    <div>name: {{ one_item.name }} | description: {{ one_item.description }} | price: {{ one_item.price_hour }}</div>
+  {% endfor %}
+
+
+</body>
+</html>
