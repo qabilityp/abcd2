@@ -24,24 +24,45 @@ class Dblocal(object):
         self.con = sqlite3.connect(file_name)
         self.con.row_factory = dict_factory
         self.cur = self.con.cursor()
+
     def __enter__(self):
         return self.con.cursor()
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.con.commit()
         self.con.close()
 
 
+class Dbhandle:
+    def __init__(self, db_file):
+        self.conn = sqlite3.connect(db_file)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+
+    def select(self, table, columns='*', where=None, single=False):
+            query = f"SELECT {columns} FROM {table}"
+
+            if where:
+                query += f" WHERE " + " AND ".join([f"{key} = ?" for key in where])
+                self.cursor.execute(query, tuple(where.values()))
+            else:
+                self.cursor.execute(query)
+
+            return self.cursor.fetchone() if single else self.cursor.fetchall()
+
+    def insert(self, table, data):
+            columns = ', '.join(data.keys())
+            placeholders = ', '.join(['?'] * len(data))
+            query = f'INSERT INTO {table} ({columns}) VALUES ({placeholders})'
+            self.cursor.execute(query, tuple(data.values()))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == 'GET':
-        return render_template('register.html')
-    if request.method == 'POST':
-        with Dblocal('database_3.db') as db_cur:
-            form_data = request.form
-            db_cur.execute('''INSERT INTO user (login, password, ipn, full_name, contracts, photo, passport)
-                           VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                           (form_data['login'], form_data['password'], form_data['ipn'], form_data['full_name'], form_data['contracts'], form_data['photo'], form_data['passport']))
-        return redirect('/login')
+    form_data = request.form.to_dict()
+    db = Dbhandle('database_3.db')
+    db.insert('user', form_data)
+    return redirect('/login')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -51,9 +72,10 @@ def login():
         username = request.form['login']
         password = request.form['password']
 
-        with Dblocal('database_3.db') as db_project:
-            user = db_project.execute('''SELECT * FROM user where login = ? AND password = ?''',
-                               (username, password)).fetchone()
+        db = Dbhandle('database_3.db')
+        conditions = {'login': username, 'password': password}
+        user = db.select('user', '*', conditions, single=True)
+
         if user:
             session['user_id'] = user['id']
             session['username'] = user['login']
@@ -80,17 +102,15 @@ def logout():
 @login_required
 def profile():
     if request.method == 'GET':
-        with Dblocal('database_3.db') as db_project:
-            db_project.execute('''SELECT full_name FROM user where id == ?''', (session['user_id'],))
-            full_name = db_project.fetchone()
-            print(session)
-            if full_name is None:
-                return "Користувач не знайдений"
-            full_name = full_name['full_name']
+        db = Dbhandle('database_3.db')
+        conditions = {'id': session['user_id']}
+        full_name = db.select('user', conditions)
+        print(session)
+        if full_name is None:
+            return "Користувач не знайдений"
         return render_template('user.html', full_name=full_name)
     if request.method == 'POST':
         return 'POST'
-
 
 @app.route('/profile/user', methods=['GET', 'PUT', 'DELETE'])
 @login_required
@@ -126,17 +146,14 @@ def favorites():
 @login_required
 def items():
     if request.method == 'GET':
-        with Dblocal('database_3.db') as db_cur:
-            db_cur.execute('SELECT * FROM item')
-            items = db_cur.fetchall()
+        db = Dbhandle('database_3.db')
+        items = db.select('item')
         return render_template('item.html', items=items)
     elif request.method == 'POST':
-        with Dblocal('database_3.db') as db_cur:
-            form_data = request.form
-            db_cur.execute('''INSERT INTO item (photo, name, description, price_hour, price_day, price_week, price_month)
-                              VALUES (:photo, :name, :description, :price_hour, :price_day, :price_week, :price_month)''',
-                           form_data)
-            return redirect('/items')
+        form_data = request.form.to_dict()
+        db = Dbhandle('database_3.db')
+        db.insert('item', form_data)
+        return redirect('/items')
 
 
 @app.route('/items/<item_id>', methods=['GET', 'DELETE'])
@@ -161,27 +178,33 @@ def get_leaser(leaser_id):
 @login_required
 def contracts():
     if request.method == 'GET':
-        with Dblocal('database_3.db') as db_project:
-            db_project.execute('SELECT * FROM contract')
-            contracts = db_project.fetchall()
+        db = Dbhandle('database_3.db')
+        contracts = db.select('contract')
         return render_template('contracts.html', contracts=contracts)
     elif request.method == 'POST':
+
         print(request.form)
 
-        with Dblocal('database_3.db') as db_project:
-            db_project.execute('''SELECT id FROM user WHERE id = ?''', (session['user_id'],))
-            my_id = db_project.fetchone()['id']
-            taker_id = my_id
-            item_contract = int(request.form['item_contract'])
-            db_project.execute('''SELECT leaser FROM contract WHERE id = ?''', (item_contract,))
-            contract_status = 'pending'
-            query_args = (
-                request.form['text_contract'], request.form['start_date'], request.form['end_date'],
-                request.form['contract_num'], request.form['taker'],
-                taker_id, item_contract, contract_status,
-            )
-            insert_query = '''INSERT INTO contract (text_contract, start_date, end_date, contract_num, leaser, taker, item_contract, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'''
-            db_project.execute(insert_query, query_args)
+        db = Dbhandle('database_3.db')
+        user = db.select('user', {'id': session['user_id']})
+        taker_id = user['id'] if user else None
+
+        item_contract = int(request.form['item_contract'])
+        contract = db.select('contract', {'id': item_contract})
+        leaser = contract['leaser'] if contract else None
+
+        query_args = {
+            'text_contract': request.form['text_contract'],
+            'start_date': request.form['start_date'],
+            'end_date': request.form['end_date'],
+            'contract_num': request.form['contract_num'],
+            'leaser': leaser,
+            'taker': taker_id,
+            'item_contract': item_contract,
+            'status': 'pending'
+        }
+        db.insert('contract', query_args)
+
         return 'POST'
 
 
