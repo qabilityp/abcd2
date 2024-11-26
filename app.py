@@ -1,6 +1,16 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
 from functools import wraps
+from dateutil import parser
+
+
+from select import select
+from sqlalchemy import create_engine
+
+import models
+from database import init_db, db_session
+from models import User, Item
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
@@ -57,12 +67,20 @@ class Dbhandle:
             self.cursor.execute(query, tuple(data.values()))
 
 @app.route('/register', methods=['GET', 'POST'])
-def register():
-    form_data = request.form.to_dict()
-    db = Dbhandle('database_3.db')
-    db.insert('user', form_data)
+def register(form_data=None):
+    if request.method == 'GET':
+        return render_template('register.html')
+    if request.method == 'POST':
+        form_data = request.form.to_dict()
+        init_db()
+        existing_user = db_session.query(models.User).filter_by(ipn=form_data['ipn']).first()
+        if existing_user:
+            return "Користувач із таким IPN вже існує."
+        user = models.User(**form_data)
+        db_session.add(user)
+        db_session.commit()
+        print(form_data)
     return redirect('/login')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -71,14 +89,15 @@ def login():
     elif request.method == 'POST':
         username = request.form['login']
         password = request.form['password']
+        init_db()
 
-        db = Dbhandle('database_3.db')
-        conditions = {'login': username, 'password': password}
-        user = db.select('user', '*', conditions, single=True)
+        query = models.User.query.filter_by(login=username)
+        result = db_session.execute(query)
+        user_data = result.scalars().first()
 
-        if user:
-            session['user_id'] = user['id']
-            session['username'] = user['login']
+        if user_data and user_data.password == password:
+            session['user_id'] = user_data.id
+            session['username'] = user_data.login
             return redirect('/dashboard')
         else:
             return "Невірні дані, спробуйте ще раз"
@@ -146,14 +165,16 @@ def favorites():
 @login_required
 def items():
     if request.method == 'GET':
-        db = Dbhandle('database_3.db')
-        items = db.select('item')
+        init_db()
+        items_query = db_session.query(models.Item)
+        items = items_query.all()
         return render_template('item.html', items=items)
     elif request.method == 'POST':
-        form_data = request.form.to_dict()
-        db = Dbhandle('database_3.db')
-        db.insert('item', form_data)
-        return redirect('/items')
+        form_data = request.form
+        item = models.Item(**form_data)
+        db_session.add(item)
+        db_session.commit()
+    return redirect('/items')
 
 
 @app.route('/items/<item_id>', methods=['GET', 'DELETE'])
@@ -178,35 +199,19 @@ def get_leaser(leaser_id):
 @login_required
 def contracts():
     if request.method == 'GET':
-        db = Dbhandle('database_3.db')
-        contracts = db.select('contract')
+        init_db()
+        contracts_query = db_session.query(models.Contract)
+        contracts = contracts_query.all()
         return render_template('contracts.html', contracts=contracts)
     elif request.method == 'POST':
 
         print(request.form)
 
-        db = Dbhandle('database_3.db')
-        user = db.select('user', {'id': session['user_id']})
-        taker_id = user['id'] if user else None
-
-        item_contract = int(request.form['item_contract'])
-        contract = db.select('contract', {'id': item_contract})
-        leaser = contract['leaser'] if contract else None
-
-        query_args = {
-            'text_contract': request.form['text_contract'],
-            'start_date': request.form['start_date'],
-            'end_date': request.form['end_date'],
-            'contract_num': request.form['contract_num'],
-            'leaser': leaser,
-            'taker': taker_id,
-            'item_contract': item_contract,
-            'status': 'pending'
-        }
-        db.insert('contract', query_args)
-
-        return 'POST'
-
+        form_data = request.form
+        contract = models.Contract(**form_data)
+        db_session.add(contract)
+        db_session.commit()
+        return redirect('/contracts')
 
 @app.route('/contracts/<contract_id>', methods=['GET', 'PUT', 'PATCH'])
 def get_contract(contract_id):
