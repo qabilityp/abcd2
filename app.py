@@ -2,13 +2,14 @@ from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
 from functools import wraps
 from dateutil import parser
+from sqlalchemy.exc import OperationalError
 
 
 from select import select
 from sqlalchemy import create_engine
 
 import models
-from database import init_db, db_session
+from database import init_db, db_session, engine
 from models import User, Item
 
 app = Flask(__name__)
@@ -121,13 +122,10 @@ def logout():
 @login_required
 def profile():
     if request.method == 'GET':
-        db = Dbhandle('database_3.db')
-        conditions = {'id': session['user_id']}
-        full_name = db.select('user', conditions)
-        print(session)
-        if full_name is None:
-            return "Користувач не знайдений"
-        return render_template('user.html', full_name=full_name)
+        user_id = session['user_id']
+        user = db_session.query(User).get(user_id)
+        print(user)
+        return render_template('profile.html', user=user)
     if request.method == 'POST':
         return 'POST'
 
@@ -244,12 +242,11 @@ def compare():
 conn = sqlite3.connect('database_3.db')
 db_cur = conn.cursor()
 
-db_cur.execute('SELECT name FROM sqlite_master WHERE type="table" AND name="user"')
-result = db_cur.fetchone()
-if result is None:
-    print("Таблица user не существует")
-else:
-    print("Таблица user существует")
+try:
+    User.__table__.create(engine)
+    print("Таблица user создана.")
+except OperationalError:
+    print("Таблица user уже существует.")
 
 
 if __name__ == '__main__':

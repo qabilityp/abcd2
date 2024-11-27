@@ -13,7 +13,7 @@ class User(Base):
     photo = Column(String(150))
     passport = Column(String(150))
 
-    def __init__(self, login=None, password=None, ipn=None, full_name=None, contacts=None, photo=None, passport=None):
+    def __init__(self, login, password, ipn, full_name, contacts, photo, passport):
         self.login = login
         self.password = password
         self.ipn = ipn
@@ -78,4 +78,5 @@ class Contract(Base):
 
     def __repr__(self):
         return f"<Contract(text_contract={self.text_contract}, start_date={self.start_date}, end_date={self.end_date}, contract_num={self.contract_num}, status={self.status}, leaser_id={self.leaser_id}, taker_id={self.taker_id})>"
+
 
