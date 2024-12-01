@@ -1,4 +1,7 @@
-from sqlalchemy import Column, Integer, REAL, Date, Text, String
+from collections import defaultdict
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, REAL, Date, Text, String, DateTime
 from database import Base
 from dateutil import parser
 
@@ -36,6 +39,7 @@ class Item(Base):
     price_day = Column(REAL)
     price_week = Column(REAL)
     price_month = Column(REAL)
+    timestamp = Column(DateTime, default=datetime.now, nullable=True)
 
     def __init__(self, **kwargs):
             self.photo = kwargs.get('photo')
@@ -50,7 +54,7 @@ class Item(Base):
         return f"<Item(photo={self.photo}, name={self.name}, description={self.description}, price_hour={self.price_hour}, price_day={self.price_day}, price_week={self.price_week}, price_month={self.price_month})>"
 
 class Contract(Base):
-    __tablename__ = 'contract'
+    __tablename__ = 'contract_new'
     id = Column(Integer, primary_key=True, autoincrement=True)
     text_contract = Column(Text)
     start_date = Column(Date)
@@ -79,4 +83,26 @@ class Contract(Base):
     def __repr__(self):
         return f"<Contract(text_contract={self.text_contract}, start_date={self.start_date}, end_date={self.end_date}, contract_num={self.contract_num}, status={self.status}, leaser_id={self.leaser_id}, taker_id={self.taker_id})>"
 
+class Feedback(Base):
+    __tablename__ = 'feedback'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    author = Column(Integer)
+    user_feedback = Column(Integer)
+    text_feedback = Column(String(500))
+    grade = Column(Integer)
+    contract_feedback = Column(Integer)
+    timestamp = Column(DateTime, default=datetime.now, nullable=True)
+
+    def __init__(self, author, user_feedback, text_feedback, grade, contract_feedback):
+        self.author = author
+        self.user_feedback = user_feedback
+        self.text_feedback = text_feedback
+        self.grade = grade
+        self.contract_feedback = contract_feedback
+
+    def __repr__(self):
+        return (
+            f"<Feedback(id={self.id}, author={self.author}, user_feedback={self.user_feedback}, "
+            f"grade={self.grade})>"
+        )
 

@@ -239,7 +239,7 @@ def compare():
     elif request.method in ['PUT', 'PATCH']:
         return 'UPDATE'
 
-conn = sqlite3.connect('database_3.db')
+conn = sqlite3.connect('database_3_.db')
 db_cur = conn.cursor()
 
 try:
