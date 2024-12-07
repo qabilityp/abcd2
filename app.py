@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from _operator import and_
+from datetime import datetime
+
+from flask import Flask, render_template, request, redirect, session, url_for, flash
 import sqlite3
 from functools import wraps
 from dateutil import parser
 from sqlalchemy.exc import OperationalError
-
-
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from select import select
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 
 import models
 from database import init_db, db_session, engine
@@ -14,6 +17,11 @@ from models import User, Item
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database_3_.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 def login_required(f):
     @wraps(f)
@@ -118,7 +126,7 @@ def logout():
     session.pop('username', None)
     return redirect('/login')
 
-@app.route('/profile', methods=['GET', 'POST'])
+@app.route('/profile', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def profile():
     if request.method == 'GET':
@@ -126,8 +134,28 @@ def profile():
         user = db_session.query(User).get(user_id)
         print(user)
         return render_template('profile.html', user=user)
-    if request.method == 'POST':
-        return 'POST'
+    elif request.method == 'PUT':
+        data = request.form
+        user_id = session['user_id']
+        user = db_session.query(User).get(user_id)
+        user.login = data.get('login', user.login)
+        user.password = data.get('password', user.password)
+        user.ipn = data.get('ipn', user.ipn)
+        user.full_name = data.get('full_name', user.full_name)
+        user.contacts = data.get('contacts', user.contacts)
+        user.photo = data.get('photo', user.photo)
+        user.passport = data.get('passport', user.passport)
+        db_session.commit()
+        flash('Profile updated successfully!', 'success')
+        return redirect('/profile')
+    elif request.method == 'DELETE':
+        user_id = session['user_id']
+        user = db_session.query(User).get(user_id)
+        db_session.delete(user)
+        db_session.commit()
+        session.clear()
+        flash('Your account has been deleted.', 'info')
+        return redirect('/login')
 
 @app.route('/profile/user', methods=['GET', 'PUT', 'DELETE'])
 @login_required
@@ -164,9 +192,21 @@ def favorites():
 def items():
     if request.method == 'GET':
         init_db()
-        items_query = db_session.query(models.Item)
-        items = items_query.all()
-        return render_template('item.html', items=items)
+        items_query = db_session.query(models.Item, models.Contract).\
+            outerjoin(models.Contract,
+            (models.Item.id == models.Contract.item_contract) &
+                      (and_(func.current_date() >= models.Contract.start_date,
+                       func.current_date() <= models.Contract.end_date)))
+        print(str(items_query.statement))
+        items_list = items_query.all()
+
+        render_items = []
+        for item in items_list:
+            render_items.append(dict(name = item.Item.name, avaiable = True if item.Contract is not None else False,
+                                     id = item.Item.id, description = item.Item.description))
+        return render_template('item.html', items=render_items)
+
+
     elif request.method == 'POST':
         form_data = request.form
         item = models.Item(**form_data)
@@ -175,12 +215,25 @@ def items():
     return redirect('/items')
 
 
-@app.route('/items/<item_id>', methods=['GET', 'DELETE'])
+@app.route('/items/<item_id>', methods=['GET'])
+@login_required
 def item(item_id):
     if request.method == 'GET':
-        return f'GET {item_id}'
-    elif request.method == 'DELETE':
-        return f'DELETE {item_id}'
+        item = db_session.query(models.Item).filter_by(id=item_id).scalar()
+        return render_template('item_detail.html', item_id=item_id, photo=item.photo, name=item.name,
+                               description=item.description, price_hour=item.price_hour, price_week=item.price_week,
+                               price_month=item.price_month, owner_id=item.owner_id, current_user=session['user_id']
+)
+
+@app.route('/items/<item_id>/delete', methods=['POST'])
+@login_required
+def delete_item(item_id):
+    item = db_session.query(models.Item).filter_by(id=item_id).scalar()
+    if item:
+        db_session.delete(item)
+        db_session.commit()
+        return redirect('/items')
+    return 'Item not found', 404
 
 @app.route('/leasers', methods=['GET'])
 def leasers():
@@ -198,25 +251,37 @@ def get_leaser(leaser_id):
 def contracts():
     if request.method == 'GET':
         init_db()
-        contracts_query = db_session.query(models.Contract)
-        contracts = contracts_query.all()
-        return render_template('contracts.html', contracts=contracts)
+        my_contracts = db_session.query(models.Contract).filter_by(taker_id=session['user_id']).all()
+        contracts_by_my_items = db_session.query(models.Contract).filter_by(leaser_id=session['user_id']).all()
+        return render_template('contracts.html', contracts=contracts, my_contracts=my_contracts, contracts_by_my_items=contracts_by_my_items)
     elif request.method == 'POST':
 
         print(request.form)
 
-        form_data = request.form
+        form_data = request.form.to_dict()
+
+        if 'start_date' in form_data:
+            form_data['start_date'] = datetime.strptime(form_data['start_date'], '%Y-%m-%d').date()
+        if 'end_date' in form_data:
+            form_data['end_date'] = datetime.strptime(form_data['end_date'], '%Y-%m-%d').date()
+
         contract = models.Contract(**form_data)
+        taker_id = session['user_id']
+        item = db_session.query(models.Item).filter_by(id=form_data['item_id']).scalar()
+        if 'item_id' not in form_data:
+            return "Error: Missing item_id in the form data", 400
+        contract.taker_id = taker_id
+        contract.leaser_id = item.owner_id
+        contract.item_contract = item.id
         db_session.add(contract)
         db_session.commit()
         return redirect('/contracts')
 
 @app.route('/contracts/<contract_id>', methods=['GET', 'PUT', 'PATCH'])
-def get_contract(contract_id):
+def contract_detail(contract_id):
     if request.method == 'GET':
-        return f'GET {contract_id}'
-    elif request.method in ['PUT', 'PATCH']:
-        return f'UPDATE {contract_id}'
+        contract = db_session.query(models.Contract).filter_by(id=contract_id).scalar()
+        return render_template('contract_detail.html', contract=contract)
 
 
 @app.route('/search', methods=['GET', 'POST'])

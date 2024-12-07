@@ -2,13 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>User Profile</title>
+<style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .profile-container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .profile-container p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        .profile-container .label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
 </head>
 <body>
 
-<form method="get" action="/profile">
+<div class="profile-container">
+    <form method="GET" action="/profile">
+        <p><span class="label">Full Name:</span>{{ user.full_name }}</p>
+        <p><span class="label">Login:</span>{{ user.login }}</p>
+        <p><span class="label">IPN:</span>{{ user.ipn }}</p>
+        <p><span class="label">Contacts:</span>{{ user.contacts }}</p>
+        <p><span class="label">Photo:</span>
+            <img src="{{ user.photo }}" alt="Profile Photo" style="width:100px; height:auto; border-radius: 5px;">
+        </p>
+        <p><span class="label">Passport:</span>{{ user.passport }}</p>
+        <button type="submit" style="padding: 10px 20px; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Refresh Profile
+        </button>
+    </form>
+</div>
 
-  <p>Full Name: {{ user.full_name }}</p>
 
-  </body>
+</body>
 </html>

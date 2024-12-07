@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Photo</th>
+      <th scope="col">name</th>
+      <th scope="col">description</th>
+      <th scope="col">Price Hour</th>
+      <th scope="col">Price Week</th>
+      <th scope="col">Price Month</th>
+      <th scope="col">Owner name</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>{{ photo }}</td>
+      <td>{{ name }}</td>
+      <td>{{ description }}</td>
+      <td>{{ price_hour }}</td>
+      <td>{{ price_week }}</td>
+      <td>{{ price_month }}</td>
+      <th scope="col">{{ owner_name }}</th>
+    </tr>
+  </tbody>
+</table>
+
+{% if current_user == owner_id %}
+<form action="/items/<item_id>/delete" method="post">
+  <input type="submit" value="DELETE">
+</form>
+{% else %}
+    <form action="/contracts" method="post">
+    <label>
+    <input type="date" name="start_date" required>
+    </label>
+    <label>
+    <input type="date" name="end_date" required>
+    </label>
+    <input type="hidden" name="item_id" value="{{ item_id }}">
+    <input type="submit">
+</form>
+{% endif %}
+
+</body>
+</html>

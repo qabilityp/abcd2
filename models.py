@@ -39,9 +39,10 @@ class Item(Base):
     price_day = Column(REAL)
     price_week = Column(REAL)
     price_month = Column(REAL)
-    timestamp = Column(DateTime, default=datetime.now, nullable=True)
+    owner_id = Column(Integer)
 
     def __init__(self, **kwargs):
+            self.id = kwargs.get('id')
             self.photo = kwargs.get('photo')
             self.name = kwargs.get('name')
             self.description = kwargs.get('description')
@@ -51,7 +52,8 @@ class Item(Base):
             self.price_month = kwargs.get('price_month')
 
     def __repr__(self):
-        return f"<Item(photo={self.photo}, name={self.name}, description={self.description}, price_hour={self.price_hour}, price_day={self.price_day}, price_week={self.price_week}, price_month={self.price_month})>"
+        return (f"<Item(id={self.id} photo={self.photo}, name={self.name}, description={self.description}, price_hour={self.price_hour},"
+                f" price_day={self.price_day}, price_week={self.price_week}, price_month={self.price_month})>")
 
 class Contract(Base):
     __tablename__ = 'contract_new'
@@ -64,14 +66,13 @@ class Contract(Base):
     taker = Column(Integer)
     item_contract = Column(Integer)
     status = Column(String(50))
-    leaser_id = Column(Integer, unique=True)
-    taker_id = Column(Integer, unique=True)
-
+    leaser_id = Column(Integer)
+    taker_id = Column(Integer)
 
     def __init__(self, **kwargs):
         self.text_contract = kwargs.get('text_contract')
-        self.start_date = parser.parse(kwargs.get('start_date'))
-        self.end_date = parser.parse(kwargs.get('end_date'))
+        self.start_date = kwargs.get('start_date')
+        self.end_date = kwargs.get('end_date')
         self.contract_num = kwargs.get('contract_num')
         self.leaser = kwargs.get('leaser')
         self.taker = kwargs.get('taker')
@@ -91,7 +92,7 @@ class Feedback(Base):
     text_feedback = Column(String(500))
     grade = Column(Integer)
     contract_feedback = Column(Integer)
-    timestamp = Column(DateTime, default=datetime.now, nullable=True)
+    timestamp = Column(DateTime, default=datetime.now().date(), nullable=True)
 
     def __init__(self, author, user_feedback, text_feedback, grade, contract_feedback):
         self.author = author

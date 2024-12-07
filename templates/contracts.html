@@ -6,41 +6,44 @@
 </head>
 <body>
 
-<form method="post" action="/contracts">
 
-    <label for="text_contract">text_contract:</label>
-    <input type="text" id="text_contract" name="text_contract" required><br>
+<h1>My debts</h1>
+<table>
+    <th>Text</th>
+    <th>Start date</th>
+    <th>End date</th>
+        <th>details</th>
+    </th>
+    {% for one_contract in my_contracts %}
+    <tr>
+    <td>Start Date: {{ one_contract.text_contract }}</td>
+    <td>End Date: {{ one_contract.start_date }}</td>
+    <td>Contract Number: {{ one_contract.end_date }}</td>
+    <td><a href="/contracts/{{ one_contract.id }}">details</a></td>
+    </tr>
+    {% endfor %}
 
-    <label for="start_date">start_date:</label>
-    <input type="text" id="start_date" name="start_date" required><br>
+</table>
+<br><br>
+<h1>My items in user</h1>
+<table>
+    <th>Text</th>
+    <th>Start date</th>
+    <th>End date</th>
+        <th>details</th>
+    </th>
+    {% for one_contract in contracts_by_my_items %}
+    <tr>
+    <td>Start Date: {{ one_contract.start_date }}</td>
+    <td>End Date: {{ one_contract.end_date }}</td>
+    <td>Contract Number: {{ one_contract.contract_num }}</td>
+    <td><a href="/contracts/{{ one_contract.id }}">details</a></td>
+    </tr>
+    {% endfor %}
 
-    <label for="end_date">end_date:</label>
-    <input type="text" id="end_date" name="end_date" required><br>
+</table>
 
-    <label for="contract_num">contract_num:</label>
-    <input type="text" id="contract_num" name="contract_num" required><br>
 
-    <label for="leaser">leaser:</label>
-    <input type="number" id="leaser" name="leaser" required><br>
-
-    <label for="taker">taker:</label>
-    <input type="number" id="taker" name="taker" required><br>
-
-    <label for="item_contract">item_contract:</label>
-    <input type="number" id="item_contract" name="item_contract" required><br>
-
-    <label for="status">status:</label>
-    <input type="text" id="status" name="status" required><br>
-
-    <label for="leaser_id">leaser_id:</label>
-    <input type="number" id="leaser_id" name="leaser_id" required><br>
-
-    <label for="taker_id">taker_id:</label>
-    <input type="number" id="taker_id" name="taker_id" required><br>
-
-    <input type="submit">
-
-</form>
 
 </body>
 </html>
