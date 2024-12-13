@@ -32,4 +32,3 @@ def parallel_find_counterexample(limit, num_workers=4):
 if __name__ == '__main__':
     parallel_find_counterexample(1000000000)
 
-
