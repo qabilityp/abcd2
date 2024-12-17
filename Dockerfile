@@ -9,5 +9,3 @@ EXPOSE 5000
 
 RUN useradd app
 USER app
-
-CMD ["python", "app.py"]

@@ -11,6 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 from select import select
 from sqlalchemy import create_engine, func
 
+import celery_worker
 import models
 from database import init_db, db_session, engine
 from models import User, Item
@@ -100,9 +101,7 @@ def login():
         password = request.form['password']
         init_db()
 
-        query = models.User.query.filter_by(login=username)
-        result = db_session.execute(query)
-        user_data = result.scalars().first()
+        user_data = db_session.query(models.User).filter_by(login=username).first()
 
         if user_data and user_data.password == password:
             session['user_id'] = user_data.id
@@ -192,13 +191,11 @@ def favorites():
 def items():
     if request.method == 'GET':
         init_db()
-        items_query = db_session.query(models.Item, models.Contract).\
+        items_list = db_session.query(models.Item, models.Contract). \
             outerjoin(models.Contract,
-            (models.Item.id == models.Contract.item_contract) &
+                      (models.Item.id == models.Contract.item_contract) &
                       (and_(func.current_date() >= models.Contract.start_date,
-                       func.current_date() <= models.Contract.end_date)))
-        print(str(items_query.statement))
-        items_list = items_query.all()
+                            func.current_date() <= models.Contract.end_date))).all()
 
         render_items = []
         for item in items_list:
@@ -275,6 +272,7 @@ def contracts():
         contract.item_contract = item.id
         db_session.add(contract)
         db_session.commit()
+        celery_worker.send_email(contract.id)
         return redirect('/contracts')
 
 @app.route('/contracts/<contract_id>', methods=['GET', 'PUT', 'PATCH'])
@@ -313,6 +311,10 @@ try:
 except OperationalError:
     print("Таблица user уже существует.")
 
+@app.route('/add_task', methods=['GET'])
+def set_task():
+    celery_worker.add.delay(1, 2)
+    return "Task Sent"
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5000)
