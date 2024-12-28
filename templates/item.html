@@ -5,15 +5,50 @@
     <title>Title</title>
 </head>
 <body>
+{% extends 'base.html' %}
 
-{% for one_item in items %}
-    <div>
-        <a href="/items/{{ one_item.id }}">{{ one_item.name }}</a>
-        <br>
-        description: {{ one_item.description }}  price per hour: is Available:{{ one_item.avaiable }}
-        <br>
-    </div>
-{% endfor %}
+{% block content %}
+<!-- Существующие итемы -->
+<h2>Существующие итемы</h2>
+<ul>
+    {% for one_item in items %}
+    <li>
+        <p><strong>Итем {{ one_item.id }}:</strong> {{ one_item.name }}</p>
+        <p><strong>Описание:</strong> {{ one_item.description }}</p>
+        <p><strong>Цена в час:</strong> {{ one_item.price_hour }}</p>
+        <p><a href="/items/{{ one_item.id }}">Подробнее</a></p>
+    </li>
+    {% endfor %}
+</ul>
 
+<hr>
+
+<!-- Форма для создания нового итема -->
+<h2>Создать новый итем</h2>
+<form method="post" action="/items">
+    <label for="photo">Фото:</label>
+    <input type="text" name="photo" id="photo" required><br><br>
+
+    <label for="name">Название:</label>
+    <input type="text" name="name" id="name" required><br><br>
+
+    <label for="description">Описание:</label>
+    <input type="text" name="description" id="description" required><br><br>
+
+    <label for="price_hour">Цена в час:</label>
+    <input type="number" name="price_hour" id="price_hour" required><br><br>
+
+    <label for="price_day">Цена в день:</label>
+    <input type="number" name="price_day" id="price_day" required><br><br>
+
+    <label for="price_week">Цена в неделю:</label>
+    <input type="number" name="price_week" id="price_week" required><br><br>
+
+    <label for="price_month">Цена в месяц:</label>
+    <input type="number" name="price_month" id="price_month" required><br><br>
+
+    <button type="submit">Создать итем</button>
+</form>
+{% endblock %}
 </body>
 </html>

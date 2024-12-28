@@ -6,18 +6,31 @@
 </head>
 <body>
 
-{{ contract.id }}
-{{ contract.text_contract }}
-{{ contract.start_date }}
-{{ contract.end_date }}
-{{ contract.contract_num }}
-{{ contract.leaser }}
-{{ contract.taker }}
-{{ contract.item_contract }}
-{{ contract.status }}
-{{ contract.leaser_id }}
-{{ contract.taker_id }}
+<h1>{{ contract.contract_num or 'Не указан' }}</h1>
 
+<p><strong>Текст контракта:</strong> {{ contract.text_contract or 'Не указан' }}</p>
+<p><strong>Дата начала:</strong> {{ contract.start_date }}</p>
+<p><strong>Дата окончания:</strong> {{ contract.end_date }}</p>
+<p><strong>Арендодатель:</strong> {{ leaser.login or 'Не указан' }}</p>
+<p><strong>Арендатор:</strong> {{ taker.login or 'Не указан' }}</p>
+<p><strong>Предмет контракта:</strong> {{ item.name }}</p>
+<p><strong>Статус:</strong> {{ contract.status }}</p>
+
+<form action="/contracts/{{ contract.id }}/status" method="post">
+    <select name="status">
+        <option value="Активен" {% if contract.status == 'Активен' %}selected{% endif %}>Активен</option>
+        <option value="Не активен" {% if contract.status == 'Не активен' %}selected{% endif %}>Не активен</option>
+    </select>
+    <input type="submit" value="Сохранить">
+</form>
+
+  <form action="{{ url_for('delete_contract', contract_id=contract.id)  }}" method="post">
+    <input type="submit" value="Удалить контракт">
+  </form>
+
+
+<br>
+<a href="/contracts">Назад к списку контрактов</a>
 
 </body>
 </html>

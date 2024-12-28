@@ -1,28 +1,24 @@
+import sqlite3
 from _operator import and_
 from datetime import datetime
+from functools import wraps
 
 from flask import Flask, render_template, request, redirect, session, url_for, flash
-import sqlite3
-from functools import wraps
-from dateutil import parser
+from sqlalchemy import func
 from sqlalchemy.exc import OperationalError
-from flask_migrate import Migrate
-from flask_sqlalchemy import SQLAlchemy
-from select import select
-from sqlalchemy import create_engine, func
 
 import celery_worker
 import models
 from database import init_db, db_session, engine
-from models import User, Item
+from models import User
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database_3_.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://postgres:example@db:5432/postgres?client_encoding=utf8'
+#app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+#db = SQLAlchemy(app)
+#migrate = Migrate(app, db)
 
 def login_required(f):
     @wraps(f)
@@ -76,6 +72,11 @@ class Dbhandle:
             query = f'INSERT INTO {table} ({columns}) VALUES ({placeholders})'
             self.cursor.execute(query, tuple(data.values()))
 
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register(form_data=None):
     if request.method == 'GET':
@@ -89,13 +90,15 @@ def register(form_data=None):
         user = models.User(**form_data)
         db_session.add(user)
         db_session.commit()
-        print(form_data)
+        print("Користувач зареєстрований:", form_data)
+        return redirect(url_for('home'))
     return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return render_template('login.html')
+        error_text = request.args.get('error')
+        return render_template('login.html', error_text=error_text)
     elif request.method == 'POST':
         username = request.form['login']
         password = request.form['password']
@@ -106,17 +109,10 @@ def login():
         if user_data and user_data.password == password:
             session['user_id'] = user_data.id
             session['username'] = user_data.login
-            return redirect('/dashboard')
+            return redirect('/profile')
         else:
-            return "Невірні дані, спробуйте ще раз"
+            return redirect('/login')
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    if 'user_id' in session:
-        return f"Вітаю, {session['username']}! Ви увійшли в систему."
-    else:
-        return redirect('/login')
 
 @app.route('/logout', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -156,36 +152,6 @@ def profile():
         flash('Your account has been deleted.', 'info')
         return redirect('/login')
 
-@app.route('/profile/user', methods=['GET', 'PUT', 'DELETE'])
-@login_required
-def profile_user():
-    if request.method == 'GET':
-        return 'GET'
-    elif request.method == 'PUT':
-        return 'PUT'
-    elif request.method == 'DELETE':
-        return 'DELETE'
-
-@app.route('/profile/me', methods=['GET', 'PUT', 'DELETE'])
-def profile_me():
-    if request.method == 'GET':
-        return 'GET'
-    elif request.method == 'PUT':
-        return 'PUT'
-    elif request.method == 'DELETE':
-        return 'DELETE'
-
-@app.route('/profile/favorites', methods=['GET', 'POST', 'DELETE', 'PATCH'])
-def favorites():
-    if request.method == 'GET':
-        return 'GET'
-    elif request.method == 'POST':
-        return 'POST'
-    elif request.method == 'DELETE':
-        return 'DELETE'
-    elif request.method == 'PATCH':
-        return 'PATCH'
-
 @app.route('/items', methods=['GET', 'POST'])
 @login_required
 def items():
@@ -200,7 +166,7 @@ def items():
         render_items = []
         for item in items_list:
             render_items.append(dict(name = item.Item.name, avaiable = True if item.Contract is not None else False,
-                                     id = item.Item.id, description = item.Item.description))
+                                     id = item.Item.id, description = item.Item.description, price_hour= item.Item.price_hour))
         return render_template('item.html', items=render_items)
 
 
@@ -225,22 +191,63 @@ def item(item_id):
 @app.route('/items/<item_id>/delete', methods=['POST'])
 @login_required
 def delete_item(item_id):
-    item = db_session.query(models.Item).filter_by(id=item_id).scalar()
+    item = models.Item.query.get(item_id)
     if item:
+        db_session.query(models.Complaint).filter_by(item_id=item_id).delete()
         db_session.delete(item)
         db_session.commit()
         return redirect('/items')
     return 'Item not found', 404
 
 @app.route('/leasers', methods=['GET'])
+@login_required
 def leasers():
     if request.method == 'GET':
-        return 'GET'
+        contracts = db_session.query(models.Contract).filter_by(leaser_id=session['user_id']).all()
+        leasers = []
+        for contract in contracts:
+            leaser = db_session.query(User).get(contract.taker_id)
+            leasers.append({
+                'id': contract.taker_id,
+                'login': leaser.login,
+                'full_name': leaser.full_name,
+                'contract_id': contract.id
+            })
+    return render_template('leasers.html', leasers=leasers)
+
 
 @app.route('/leasers/<leaser_id>', methods=['GET'])
+@login_required
 def get_leaser(leaser_id):
     if request.method == 'GET':
-        return f'GET {leaser_id}'
+        leaser = db_session.query(User).get(leaser_id)
+        contracts = db_session.query(models.Contract).filter_by(taker_id=leaser_id).all()
+        return render_template('leaser_detail.html', leaser=leaser, contracts=contracts)
+
+@app.route('/takers', methods=['GET'])
+@login_required
+def takers():
+    if request.method == 'GET':
+        contracts = db_session.query(models.Contract).filter_by(taker_id=session['user_id']).all()
+        takers = []
+        for contract in contracts:
+            taker = db_session.query(User).get(contract.leaser_id)
+            takers.append({
+                'id': contract.leaser_id,
+                'login': taker.login,
+                'full_name': taker.full_name,
+                'contract_id': contract.id
+            })
+    return render_template('takers.html', takers=takers)
+
+
+@app.route('/takers/<taker_id>', methods=['GET'])
+@login_required
+def get_taker(taker_id):
+    if request.method == 'GET':
+        taker = db_session.query(User).get(taker_id)
+        contracts = db_session.query(models.Contract).filter_by(leaser_id=taker_id).all()
+        return render_template('taker_detail.html', taker=taker, contracts=contracts)
 
 
 @app.route('/contracts', methods=['GET', 'POST'])
@@ -248,11 +255,29 @@ def get_leaser(leaser_id):
 def contracts():
     if request.method == 'GET':
         init_db()
+        contracts = db_session.query(models.Contract).all()
         my_contracts = db_session.query(models.Contract).filter_by(taker_id=session['user_id']).all()
         contracts_by_my_items = db_session.query(models.Contract).filter_by(leaser_id=session['user_id']).all()
-        return render_template('contracts.html', contracts=contracts, my_contracts=my_contracts, contracts_by_my_items=contracts_by_my_items)
-    elif request.method == 'POST':
+        items = db_session.query(models.Item).all()
 
+        contract_info = []
+        for contract in contracts:
+            item = db_session.query(models.Item).get(contract.item_contract)
+            if item:
+                item_name = item.name
+            else:
+                item_name = "Элемент не найден"
+            contract_info.append({
+                'id': contract.id,
+                'contract_num': contract.contract_num,
+                'item_contract': item_name,
+                'status': contract.status
+            })
+
+        users = db_session.query(models.User).all()
+        return render_template('contracts.html', contracts=contract_info, my_contracts=my_contracts,
+                               contracts_by_my_items=contracts_by_my_items, items=items, users=users)
+    elif request.method == 'POST':
         print(request.form)
 
         form_data = request.form.to_dict()
@@ -262,14 +287,28 @@ def contracts():
         if 'end_date' in form_data:
             form_data['end_date'] = datetime.strptime(form_data['end_date'], '%Y-%m-%d').date()
 
-        contract = models.Contract(**form_data)
-        taker_id = session['user_id']
         item = db_session.query(models.Item).filter_by(id=form_data['item_id']).scalar()
         if 'item_id' not in form_data:
             return "Error: Missing item_id in the form data", 400
-        contract.taker_id = taker_id
-        contract.leaser_id = item.owner_id
-        contract.item_contract = item.id
+
+        leaser = db_session.query(models.User).filter_by(login=form_data['leaser']).scalar()
+        taker = db_session.query(models.User).filter_by(login=form_data['taker']).scalar()
+
+        if leaser is None or taker is None:
+            return "Error: Арендодатель или арендатор не найден", 400
+
+        contract_num=f"Контракт №{len(db_session.query(models.Contract).all()) + 1}",
+        contract = models.Contract(
+            text_contract=form_data['text_contract'],
+            start_date=form_data['start_date'],
+            end_date=form_data['end_date'],
+            contract_num=contract_num,
+            leaser_id=leaser.id,
+            taker_id=taker.id,
+            item_contract=item.id,
+            status='Активен'
+        )
+
         db_session.add(contract)
         db_session.commit()
         celery_worker.send_email(contract.id)
@@ -279,34 +318,81 @@ def contracts():
 def contract_detail(contract_id):
     if request.method == 'GET':
         contract = db_session.query(models.Contract).filter_by(id=contract_id).scalar()
-        return render_template('contract_detail.html', contract=contract)
+        item = db_session.query(models.Item).get(contract.item_contract)
+        leaser = db_session.query(models.User).filter_by(id=contract.leaser_id).scalar()
+        taker = db_session.query(models.User).filter_by(id=contract.taker_id).scalar()
+        print("user_id:", session['user_id'])
+        return render_template('contract_detail.html', contract=contract, item=item, leaser=leaser,
+                               taker=taker, user_id=session['user_id'])
+
+@app.route('/contracts/<contract_id>/status', methods=['POST'])
+def contract_status(contract_id):
+    contract = db_session.query(models.Contract).filter_by(id=contract_id).scalar()
+    if contract:
+        contract.status = request.form['status']
+        db_session.commit()
+        return redirect('/contracts')
+    else:
+        return "Error: Контракт не найден", 404
+
+@app.route('/contracts/delete/<int:contract_id>', methods=['POST'])
+def delete_contract(contract_id):
+    contract = models.Contract.query.get(contract_id)
+    db_session.delete(contract)
+    db_session.commit()
+
+    return redirect(url_for('contracts'))
 
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     if request.method == 'GET':
-        return 'GET'
+        return render_template('search.html')
     elif request.method == 'POST':
-        return 'POST'
+        query = request.form['query']
+        items = db_session.query(models.Item).filter(models.Item.name.like(f'%{query}%')).all()
+        return render_template('search_results.html', items=items, query=query)
 
 
-@app.route('/complain', methods=['POST'])
+@app.route('/complain', methods=['GET', 'POST'])
+@login_required
 def complain():
-    if request.method == 'POST':
-        return 'POST'
-
-@app.route('/compare', methods=['GET', 'PUT', 'PATCH'])
-def compare():
     if request.method == 'GET':
-        return 'GET'
-    elif request.method in ['PUT', 'PATCH']:
-        return 'UPDATE'
+        items = db_session.query(models.Item).all()
+        users = db_session.query(models.User).all()
+        return render_template('complain.html', items=items, users=users)
+    elif request.method == 'POST':
+        complain_type = request.form['complain_type']
+        message = request.form['message']
+        user_id = request.form['user_id']
+        item_id = request.form['item_id']
+
+        if complain_type == 'user':
+            complaint = models.Complaint(
+                user_id=user_id,
+                message=message,
+            )
+        else:
+            complaint = models.Complaint(
+                item_id=item_id,
+                message=message,
+            )
+
+        db_session.add(complaint)
+        db_session.commit()
+
+        return redirect(url_for('complain_success'))
+@app.route('/complain/success')
+@login_required
+def complain_success():
+    return render_template('complain_success.html')
+
 
 conn = sqlite3.connect('database_3_.db')
 db_cur = conn.cursor()
 
 try:
-    User.__table__.create(engine)
+    User.__table__.create(engine, checkfirst=True)
     print("Таблица user создана.")
 except OperationalError:
     print("Таблица user уже существует.")

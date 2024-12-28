@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Мой сайт</title>
+</head>
+<body>
+
+ <nav>
+        <ul>
+            <li><a href="{{ url_for('register') }}">Регистрация</a></li>
+            <li><a href="{{ url_for('login') }}">Логин</a></li>
+            <li><a href="{{ url_for('search') }}">Поиск</a></li>
+            <li><a href="{{ url_for('contracts') }}">Контракты</a></li>
+            <li><a href="{{ url_for('items') }}">Предметы</a></li>
+            <li><a href="{{ url_for('leasers') }}">Арендаторы</a></li>
+            <li><a href="{{ url_for('takers') }}">Арендодатели</a></li>
+            <li><a href="{{ url_for('profile') }}">Профиль</a></li>
+            <li><a href="{{ url_for('complain') }}">Жалоба</a></li>
+        </ul>
+    </nav>
+    <div>
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

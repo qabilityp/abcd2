@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Арендаторы</h1>
+<ul>
+    {% for leaser in leasers %}
+    <li>
+        <p><strong>{{ leaser.login }}</strong> ({{ leaser.full_name }})</p>
+        <p>Контракт: {{ leaser.contract_id }}</p>
+        <p><a href="/leasers/{{ leaser.id }}">Подробнее</a></p>
+    </li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
+
+</body>
+</html>

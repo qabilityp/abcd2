@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<h1>Арендодатель {{ taker.login }}</h1>
+<h3>Контракты</h3>
+<ul>
+    {% for contract in contracts %}
+    <li>
+        <p>Контракт {{ contract.id }}</p>
+        <p>Дата начала: {{ contract.start_date }}</p>
+        <p>Дата окончания: {{ contract.end_date }}</p>
+    </li>
+    {% endfor %}
+</ul>
+
+<a href="/takers">Вернуться к списку Арендодателей</a>
+
+</body>
+</html>

@@ -1,21 +1,52 @@
+version: '3'
 services:
   web_app:
     build: .
     command: python app.py
     ports:
-      - 5000:5000
+      - '5000:5000'
     environment:
         - RABBIT_HOST=rabbitmq
+        - DB_HOST=db
+        - DB_USER=postgres
+        - DB_PASSWORD=example
+        - DB_NAME=postgres
+        - ALEMBIC_DATABASE_URL=postgresql+psycopg2://postgres:example@db:5432/postgres
+    volumes:
+      - .:/app
+    networks:
+      - default
+
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - 15672:15672
-      - 5672:5672
+      - '15672:15672'
+      - '5672:5672'
     hostname: rabbitmq
+    networks:
+      - default
 
   celery_worker:
     build: .
     command: celery -A celery_worker worker --loglevel=INFO --purge --pool=solo
     environment:
       - RABBIT_HOST=rabbitmq
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=example
+      - DB_NAME=postgres
+    volumes:
+      - .:/app
+    networks:
+      - default
+
+
+  db:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - '5432:5432'
+    networks:
+      - default

@@ -1,3 +1,4 @@
+import email.message
 import os
 import smtplib
 from celery import Celery
@@ -19,16 +20,22 @@ def send_email(contract_id):
     item = db_session.query(models.Item).filter_by(id=contract.item_contract).scalar()
 
     # creates SMTP session
-    s = smtplib.SMTP('smtp.gmail.com', 587)
+    #s = smtplib.SMTP('smtp.gmail.com', 587)
     # start TLS for security
-    s.starttls()
+    #s.starttls()
     # Authentication
-    s.login("sender_email_id", "sender_email_id_password")
+    #s.login("sender_email_id", "sender_email_id_password")
     # message to be sent
-    message = "Message_you_need_to_send"
+    #message = "Message_you_need_to_send"
+    msg = email.message.Message()
+    msg['Subject'] = 'Test email'
+    msg['From'] = 'appemail@exmple.com'
+    msg['To'] = 'user1@exmple.com'
+    msg.set_payload('Message_you_need_to_send')
+    print(msg.as_string())
     # sending the mail
-    s.sendmail("appemail@exmple.com", "user1@exmple.com", message)
-    s.sendmail("appemail@exmple.com", "user2@exmple.com", message)
+    #s.sendmail("appemail@exmple.com", "user1@exmple.com", message)
+    #s.sendmail("appemail@exmple.com", "user2@exmple.com", message)
     # terminating the session
-    s.quit()
+    #s.quit()
 

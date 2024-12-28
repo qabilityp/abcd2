@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Арендодатели</h1>
+<ul>
+    {% for taker in takers %}
+    <li>
+        <p><strong>{{ taker.login }}</strong> ({{ taker.full_name }})</p>
+        <p>Контракт: {{ taker.contract_id }}</p>
+        <p><a href="/takers/{{ taker.id }}">Подробнее</a></p>
+    </li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
+
+</body>
+</html>

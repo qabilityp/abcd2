@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Complain</h1>
+<form method="post" action="{{ url_for('complain') }}">
+  <label>
+    Тип жалобы:
+    <select name="complain_type" id="complain_type">
+      <option value="user">На пользователя</option>
+      <option value="item">На предмет</option>
+    </select>
+  </label>
+  <div id="user_complain" style="display: none;">
+    <label>
+      Пользователь:
+      <select name="user_id">
+        {% for user in users %}
+          {% if user.id!= session['user_id'] %}
+            <option value="{{ user.id }}">{{ user.login }} ({{ user.full_name }})</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div id="item_complain" style="display: none;">
+    <label>
+      Предмет:
+      <select name="item_id">
+        {% for item in items %}
+          <option value="{{ item.id }}">{{ item.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <label>
+    <textarea name="message" placeholder="Enter your complaint message"></textarea>
+  </label>
+  <input type="submit" value="Submit Complaint">
+</form>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const complainTypeSelect = document.getElementById('complain_type');
+    const userComplainDiv = document.getElementById('user_complain');
+    const itemComplainDiv = document.getElementById('item_complain');
+
+    complainTypeSelect.addEventListener('change', function() {
+      if (complainTypeSelect.value === 'user') {
+        userComplainDiv.style.display = 'block';
+        itemComplainDiv.style.display = 'none';
+      } else {
+        userComplainDiv.style.display = 'none';
+        itemComplainDiv.style.display = 'block';
+      }
+    });
+
+    // показать блок для жалоб на пользователя по умолчанию
+    userComplainDiv.style.display = 'block';
+  });
+</script>
+{% endblock %}
+</body>
+</html>

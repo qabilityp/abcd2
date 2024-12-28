@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<h1>Search Results for "{{ query }}"</h1>
+<ul>
+    {% for item in items %}
+        <li>
+            <p>{{ item.name }}</p>
+            <p>{{ item.description }}</p>
+            <p>Price: {{ item.price_hour }} per hour, {{ item.price_week }} per week, {{ item.price_month }} per month</p>
+        </li>
+    {% endfor %}
+</ul>
+
+
+</body>
+</html>

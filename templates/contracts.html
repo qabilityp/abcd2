@@ -5,45 +5,54 @@
     <title>Title</title>
 </head>
 <body>
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Список контрактов</h1>
+
+    <!-- Существующие контракты -->
+    <h2>Существующие контракты</h2>
+    <ul>
+        {% for contract in contracts %}
+        <li>
+            <p>{{ contract.contract_num }}:</p>
+            <p>Предмет контракта: {{ contract.item_contract }}</p>
+            <p>Статус: {{ contract.status }}</p>
+            <p><a href="/contracts/{{ contract.id }}">Подробнее</a></p>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <hr>
+
+    <!-- Форма для создания нового контракта -->
+ <h2>Создать новый контракт</h2>
+<form action="/contracts" method="POST">
+    <label for="item_id">Предмет контракта:</label>
+    <select name="item_id" id="item_id" required>
+        {% for item in items %}
+            <option value="{{ item.id }}">{{ item.name }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label for="text_contract">Текст контракта:</label>
+    <textarea name="text_contract" id="text_contract" required></textarea><br><br>
+
+    <label for="leaser">Арендодатель:</label>
+    <input type="text" name="leaser" id="leaser" required><br><br>
+
+    <label for="taker">Арендатор:</label>
+    <input type="text" name="taker" id="taker" required><br><br>
 
 
-<h1>My debts</h1>
-<table>
-    <th>Text</th>
-    <th>Start date</th>
-    <th>End date</th>
-        <th>details</th>
-    </th>
-    {% for one_contract in my_contracts %}
-    <tr>
-    <td>Start Date: {{ one_contract.text_contract }}</td>
-    <td>End Date: {{ one_contract.start_date }}</td>
-    <td>Contract Number: {{ one_contract.end_date }}</td>
-    <td><a href="/contracts/{{ one_contract.id }}">details</a></td>
-    </tr>
-    {% endfor %}
+    <label for="start_date">Дата начала:</label>
+    <input type="date" name="start_date" id="start_date" required><br><br>
 
-</table>
-<br><br>
-<h1>My items in user</h1>
-<table>
-    <th>Text</th>
-    <th>Start date</th>
-    <th>End date</th>
-        <th>details</th>
-    </th>
-    {% for one_contract in contracts_by_my_items %}
-    <tr>
-    <td>Start Date: {{ one_contract.start_date }}</td>
-    <td>End Date: {{ one_contract.end_date }}</td>
-    <td>Contract Number: {{ one_contract.contract_num }}</td>
-    <td><a href="/contracts/{{ one_contract.id }}">details</a></td>
-    </tr>
-    {% endfor %}
+    <label for="end_date">Дата окончания:</label>
+    <input type="date" name="end_date" id="end_date" required><br><br>
 
-</table>
-
-
-
+    <button type="submit">Создать контракт</button>
+</form>
+{% endblock %}
 </body>
 </html>

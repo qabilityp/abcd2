@@ -1,9 +1,10 @@
 from collections import defaultdict
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, REAL, Date, Text, String, DateTime
+from sqlalchemy import Column, Integer, REAL, Date, Text, String, DateTime, ForeignKey
 from database import Base
 from dateutil import parser
+
 
 class User(Base):
     __tablename__ = 'user'
@@ -28,7 +29,6 @@ class User(Base):
     def __repr__(self):
         return f"<User(id={self.id}, login={self.login}, full_name={self.full_name}, ipn={self.ipn})>"
 
-
 class Item(Base):
     __tablename__ = 'item'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -42,14 +42,14 @@ class Item(Base):
     owner_id = Column(Integer)
 
     def __init__(self, **kwargs):
-            self.id = kwargs.get('id')
-            self.photo = kwargs.get('photo')
-            self.name = kwargs.get('name')
-            self.description = kwargs.get('description')
-            self.price_hour = kwargs.get('price_hour')
-            self.price_day = kwargs.get('price_day')
-            self.price_week = kwargs.get('price_week')
-            self.price_month = kwargs.get('price_month')
+        self.id = kwargs.get('id')
+        self.photo = kwargs.get('photo')
+        self.name = kwargs.get('name')
+        self.description = kwargs.get('description')
+        self.price_hour = kwargs.get('price_hour')
+        self.price_day = kwargs.get('price_day')
+        self.price_week = kwargs.get('price_week')
+        self.price_month = kwargs.get('price_month')
 
     def __repr__(self):
         return (f"<Item(id={self.id} photo={self.photo}, name={self.name}, description={self.description}, price_hour={self.price_hour},"
@@ -58,31 +58,28 @@ class Item(Base):
 class Contract(Base):
     __tablename__ = 'contract_new'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    text_contract = Column(Text)
-    start_date = Column(Date)
-    end_date = Column(Date)
-    contract_num = Column(Text)
-    leaser = Column(Integer)
-    taker = Column(Integer)
-    item_contract = Column(Integer)
-    status = Column(String(50))
-    leaser_id = Column(Integer)
-    taker_id = Column(Integer)
+    text_contract = Column(Text, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    contract_num = Column(String(20), unique=True, nullable=False)
+    leaser_id = Column(Integer, ForeignKey('user.id'))
+    taker_id = Column(Integer, ForeignKey('user.id'))
+    item_contract = Column(Integer, ForeignKey('item.id'))
+    status = Column(String(50), nullable=False)
 
-    def __init__(self, **kwargs):
-        self.text_contract = kwargs.get('text_contract')
-        self.start_date = kwargs.get('start_date')
-        self.end_date = kwargs.get('end_date')
-        self.contract_num = kwargs.get('contract_num')
-        self.leaser = kwargs.get('leaser')
-        self.taker = kwargs.get('taker')
-        self.item_contract = kwargs.get('item_contract')
-        self.status = kwargs.get('status')
-        self.leaser_id = kwargs.get('leaser_id')
-        self.taker_id = kwargs.get('taker_id')
+    def __init__(self, text_contract, start_date, end_date, contract_num, leaser_id, taker_id, item_contract, status):
+        self.text_contract = text_contract
+        self.start_date = start_date
+        self.end_date = end_date
+        self.contract_num = contract_num
+        self.leaser_id = leaser_id
+        self.taker_id = taker_id
+        self.item_contract = item_contract
+        self.status = status
 
     def __repr__(self):
-        return f"<Contract(text_contract={self.text_contract}, start_date={self.start_date}, end_date={self.end_date}, contract_num={self.contract_num}, status={self.status}, leaser_id={self.leaser_id}, taker_id={self.taker_id})>"
+        return (f"<Contract(text_contract={self.text_contract}, start_date={self.start_date}, end_date={self.end_date}, "
+                f"contract_num={self.contract_num}, status={self.status}, leaser_id={self.leaser_id}, taker_id={self.taker_id})>")
 
 class Feedback(Base):
     __tablename__ = 'feedback'
@@ -107,3 +104,23 @@ class Feedback(Base):
             f"grade={self.grade})>"
         )
 
+
+class Complaint(Base):
+    __tablename__ = 'complaint'
+    id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, ForeignKey('item.id'))
+    contract_id = Column(Integer, ForeignKey('contract_new.id'))
+    user_id = Column(Integer, ForeignKey('user.id'))
+    message = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __init__(self, item_id=None, contract_id=None, user_id=None, message=None):
+        self.item_id = item_id
+        self.contract_id = contract_id
+        self.user_id = user_id
+        self.message = message
+
+    def __repr__(self):
+        return (
+            f"<Complaint(id={self.id}, item_id={self.item_id}, contract_id={self.contract_id}, user_id={self.user_id}, message={self.message})>"
+        )

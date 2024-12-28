@@ -31,22 +31,13 @@
   </tbody>
 </table>
 
-{% if current_user == owner_id %}
-<form action="/items/<item_id>/delete" method="post">
-  <input type="submit" value="DELETE">
-</form>
-{% else %}
-    <form action="/contracts" method="post">
-    <label>
-    <input type="date" name="start_date" required>
-    </label>
-    <label>
-    <input type="date" name="end_date" required>
-    </label>
-    <input type="hidden" name="item_id" value="{{ item_id }}">
-    <input type="submit">
-</form>
-{% endif %}
+
+  <form action="/items/{{ item_id }}/delete" method="post">
+    <input type="submit" value="Удалить предмет">
+  </form>
+
+
+<a href="/items">Вернуться к списку предметов</a>
 
 </body>
 </html>
